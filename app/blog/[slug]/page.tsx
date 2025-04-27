@@ -14,8 +14,9 @@ export async function generateStaticParams() {
   }));
 }
 
-export function generateMetadata({ params }) {
-  let post = getBlogPosts().find((post) => post.slug === params.slug);
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  let post = getBlogPosts().find((post) => post.slug === slug);
   if (!post) {
     return;
   }
@@ -55,15 +56,12 @@ export function generateMetadata({ params }) {
 }
 
 export default async function Blog({ params }) {
-  let post = getBlogPosts().find((post) => post.slug === params.slug);
+  const { slug } = await params;
+  let post = getBlogPosts().find((post) => post.slug === slug);
 
   if (!post) {
     notFound();
   }
-
-  await incrementView(params.slug);
-  const views = await getViewsCount();
-  const count = views.find((view) => view.slug === params.slug)?.count ?? 0;
 
   return (
     <section>
