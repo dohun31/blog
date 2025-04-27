@@ -6,6 +6,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
     "@tailwindcss/postcss": "4.1.4",
     "@types/node": "20.11.17",
     "@types/react": "18.2.55",
