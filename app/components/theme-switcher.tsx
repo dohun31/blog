@@ -12,22 +12,29 @@ export const ThemeSwitcher = () => {
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const currentTheme = localStorage.getItem("theme") as Theme;
-    setTheme(currentTheme);
+    if (!(theme in localStorage)) {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const nextTheme = isDark ? "dark" : "light";
+      applyTheme(nextTheme);
+    }
   }, []);
+
+  const applyTheme = (nextTheme: Theme) => {
+    localStorage.setItem("theme", nextTheme);
+    setTheme(nextTheme);
+
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   const handleToggle = () => {
     const currrentTheme = localStorage.getItem("theme") as Theme;
+    const nextTheme = currrentTheme === "dark" ? "light" : "dark";
 
-    if (currrentTheme === "dark") {
-      localStorage.setItem("theme", "light");
-      document.documentElement.classList.remove("dark");
-      setTheme("dark");
-    } else {
-      localStorage.setItem("theme", "dark");
-      document.documentElement.classList.add("dark");
-      setTheme("light");
-    }
+    applyTheme(nextTheme);
   };
 
   return (
