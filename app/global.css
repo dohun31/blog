@@ -198,4 +198,8 @@ code {
 
 .highlight-line {
   background: var(--sh-line-background);
+  border-left: 2px solid var(--sh-identifier);
+  &:before {
+    margin-left: -2px;
+  }
 }
