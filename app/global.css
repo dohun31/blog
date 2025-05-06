@@ -157,7 +157,7 @@ pre code {
   counter-reset: sh-line-number;
 }
 
-.sh__line::before {
+.code-line::before {
   counter-increment: sh-line-number 1;
   content: counter(sh-line-number);
   margin-right: 24px;
@@ -165,7 +165,7 @@ pre code {
   color: #a4a4a4;
 }
 
-.sh__line {
+.code-line {
   padding-inline: 0.5rem;
 }
 
@@ -173,8 +173,29 @@ code {
   display: flex;
   flex-direction: column;
   width: 100%;
+
+  .token.keyword {
+    color: var(--sh-keyword);
+  }
+  .token.string {
+    color: var(--sh-string);
+  }
+  .token.class,
+  .token.class-name,
+  .token.builtin {
+    color: var(--sh-class);
+  }
+  .token.identifier,
+  .token.variable,
+  .token.function {
+    color: var(--sh-identifier);
+  }
+  .token.operator,
+  .token.punctuation {
+    color: var(--sh-sign);
+  }
 }
 
-.sh__line:nth-child(3) {
+.highlight-line {
   background: var(--sh-line-background);
 }

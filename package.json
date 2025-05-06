@@ -22,5 +22,8 @@
     "sugar-high": "^0.6.1",
     "tailwindcss": "4.1.4",
     "typescript": "5.3.3"
+  },
+  "devDependencies": {
+    "rehype-prism-plus": "^2.0.1"
   }
 }
