@@ -5,7 +5,10 @@ interface ViewCountProps {
 }
 
 export const ViewCount = async ({ slug }: ViewCountProps) => {
-  await incrementView(slug);
+  if (process.env.NODE_ENV === "production") {
+    await incrementView(slug);
+  }
+
   const views = await getViewsCount();
   const count = views.find((view) => view.slug === slug)?.count ?? 0;
 
