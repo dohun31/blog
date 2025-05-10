@@ -4,6 +4,8 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import React from "react";
 import rehypePrism from "rehype-prism-plus";
 
+import { CodeFocus, CodeFocusTarget } from "./CodeFocus";
+
 function Table({ data }) {
   let headers = data.headers.map((header, index) => (
     <th key={index}>{header}</th>
@@ -96,6 +98,8 @@ let components = {
   a: CustomLink,
   code: Code,
   Table,
+  CodeFocus,
+  CodeFocusTarget,
 };
 
 export function CustomMDX(props) {

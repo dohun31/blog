@@ -8,24 +8,25 @@
 }
 
 :root {
-  --sh-class: #2d5e9d;
-  --sh-identifier: #354150;
-  --sh-sign: #8996a3;
-  --sh-string: #007f7a;
-  --sh-keyword: #e02518;
-  --sh-comment: #a19595;
-  --sh-jsxliterals: #6266d1;
-  --sh-property: #e25a1c;
-  --sh-entity: #e25a1c;
-  --sh-line-background: #f0f0f0;
+  --sh-class: 45, 94, 157; /* #2d5e9d */
+  --sh-identifier: 53, 65, 80; /* #354150 */
+  --sh-sign: 137, 150, 163; /* #8996a3 */
+  --sh-string: 0, 127, 122; /* #007f7a */
+  --sh-keyword: 224, 37, 24; /* #e02518 */
+  --sh-comment: 161, 149, 149; /* #a19595 */
+  --sh-jsxliterals: 98, 102, 209; /* #6266d1 */
+  --sh-property: 226, 90, 28; /* #e25a1c */
+  --sh-entity: 226, 90, 28; /* #e25a1c */
+  --sh-line-background: 240, 240, 240; /* #f0f0f0 */
+  --code-opacity: 1;
 }
 
 .dark {
-  --sh-class: #4c97f8;
-  --sh-identifier: white;
-  --sh-keyword: #f47067;
-  --sh-string: #0fa295;
-  --sh-line-background: #222;
+  --sh-class: 76, 151, 248; /* #4cbff8 */
+  --sh-identifier: 255, 255, 255; /* #ffffff */
+  --sh-keyword: 244, 112, 103; /* #f47067 */
+  --sh-string: 15, 162, 149; /* #0fa295 */
+  --sh-line-background: 34, 34, 34; /* #222222 */
   color-scheme: dark;
 }
 
@@ -169,37 +170,74 @@ pre code {
   padding-inline: 0.5rem;
 }
 
-code {
+@function hexToRGB($hex) {
+  @return red($hex), green($hex), blue($hex);
+}
+
+pre code {
   display: flex;
   flex-direction: column;
   width: 100%;
 
+  span {
+    transition: color 0.2s ease-in-out;
+    color: rgba(var(--sh-identifier), var(--code-opacity));
+
+    &.focus-target {
+      color: rgba(var(--sh-identifier), 1);
+    }
+  }
   .token.keyword {
-    color: var(--sh-keyword);
+    color: rgba(var(--sh-keyword), var(--code-opacity));
+
+    &.focus-target {
+      color: rgba(var(--sh-keyword), 1);
+    }
   }
   .token.string {
-    color: var(--sh-string);
+    color: rgba(var(--sh-string), var(--code-opacity));
+
+    &.focus-target {
+      color: rgba(var(--sh-string), 1);
+    }
   }
   .token.class,
   .token.class-name,
   .token.builtin {
-    color: var(--sh-class);
+    color: rgba(var(--sh-class), var(--code-opacity));
+
+    &.focus-target {
+      color: rgba(var(--sh-class), 1);
+    }
   }
   .token.identifier,
   .token.variable,
   .token.function {
-    color: var(--sh-identifier);
+    color: rgba(var(--sh-identifier), var(--code-opacity));
+
+    &.focus-target {
+      color: rgba(var(--sh-identifier), 1);
+    }
   }
   .token.operator,
   .token.punctuation {
-    color: var(--sh-sign);
+    color: rgba(var(--sh-sign), var(--code-opacity));
+
+    &.focus-target {
+      color: rgba(var(--sh-sign), 1);
+    }
   }
 }
 
 .highlight-line {
-  background: var(--sh-line-background);
-  border-left: 2px solid var(--sh-identifier);
+  background: rgb(var(--sh-line-background));
+  border-left: 2px solid rgb(var(--sh-identifier));
   &:before {
     margin-left: -2px;
   }
+}
+
+.code-focus-target {
+  background-color: rgb(var(--sh-line-background));
+  cursor: help;
 }
