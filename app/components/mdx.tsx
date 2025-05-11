@@ -3,6 +3,7 @@ import Image from "next/image";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import React from "react";
 import rehypePrism from "rehype-prism-plus";
+import rehypeSlug from "rehype-slug";
 
 import { CodeFocus, CodeFocusTarget } from "./CodeFocus";
 
@@ -64,11 +65,14 @@ function slugify(str) {
   return str
     .toString()
     .toLowerCase()
-    .trim() // Remove whitespace from both ends of a string
-    .replace(/\s+/g, "-") // Replace spaces with -
-    .replace(/&/g, "-and-") // Replace & with 'and'
-    .replace(/[^\w\-]+/g, "") // Remove all non-word characters except for -
-    .replace(/\-\-+/g, "-"); // Replace multiple - with single -
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/&/g, "-and-")
+    .replace(
+      /[^\w\-\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uD7B0-\uD7FF]+/g,
+      ""
+    ) // 한글 유니코드 범위 포함
+    .replace(/\-\-+/g, "-");
 }
 
 function createHeading(level) {
@@ -114,7 +118,7 @@ export function CustomMDX(props) {
       {...props}
       options={{
         mdxOptions: {
-          rehypePlugins: [rehypePrism],
+          rehypePlugins: [rehypeSlug, rehypePrism],
         },
       }}
       components={{ ...components, ...(props.components || {}) }}

@@ -4,6 +4,7 @@ import { formatDate, getBlogPosts } from "app/blog/utils";
 import { baseUrl } from "app/sitemap";
 import { ViewCount } from "app/components/view-count";
 import { Suspense } from "react";
+import { Toc } from "app/components/Toc";
 
 export async function generateStaticParams() {
   let posts = getBlogPosts();
@@ -64,6 +65,8 @@ export default async function Blog({ params }) {
 
   return (
     <section>
+      <Toc />
+
       <script
         type="application/ld+json"
         suppressHydrationWarning
