@@ -1,0 +1,401 @@
+---
+title: "react-konva로 알아보는 Declarative Canvas"
+publishedAt: "2024-01-07"
+summary: "react-konva로 선언적으로 canvas를 다루는 법에 대해 알아보기"
+---
+
+## 들어가기 전
+
+회사에서 차트를 다룰 때 제 모든 관심은 차트와 canvas에 쏠려 있었는데요.
+
+다른 회사 서비스를 보다가 차트만 나오면 개발자 도구를 열어서 svg인지 canvas인지 염탐하고, 어떻게 하면 차트 성능을 높일 수 있을지 매일 시간만 나면 찾아봤습니다.
+
+canvas는 항상 context로 그림을 그리고 따로 node가 없기 때문에 선언적으로 사용할 수 있을까라는 막연한 상상만 하고 있었는데, 추석 연휴가 막 시작했을 때 `react-konva` 존재를 발견했습니다.
+
+`react-konva`는 아래 코드처럼 선언적인 방식을 제안합니다.
+
+```tsx
+return (
+  <Stage width={window.innerWidth} height={window.innerHeight}>
+    <Layer>
+      <Circle x={200} y={100} radius={50} fill="green" />
+    </Layer>
+  </Stage>
+);
+```
+
+이게 어떻게 가능한 걸까요?
+
+이 글에서 한번 알아보도록 하겠습니다.
+
+## 이 글에서 다루는 것
+
+react-konva가 선언적으로 canvas를 다루는 방법에 대해서 다룹니다.  
+다른 것들은 간단하게만 언급하거나 빠르게 넘어가도록 하겠습니다.
+
+## 1. React Konva
+
+react-konva는 다양한 Konva Node들을 사용합니다.
+
+```tsx
+return (
+  <Stage width={window.innerWidth} height={window.innerHeight}>
+    <Layer>
+      <Circle x={200} y={100} radius={50} fill="green" />
+    </Layer>
+  </Stage>
+);
+```
+
+하지만 코드를 살펴보면 의문점이 생깁니다.
+
+Konva Node는 React.Component를 상속받지 않았습니다.  
+말 그대로 Konva Node는 jsx를 다루지 않고, 단지 **canvas에 어떻게 그릴지**에 대해서만 다룹니다.
+
+그렇다면 이 코드는 어떻게 작동할까요?
+
+```tsx
+export class Rect extends Shape<RectConfig> {
+  _sceneFunc(context: Context) {
+    var cornerRadius = this.cornerRadius(),
+      width = this.width(),
+      height = this.height();
+
+    context.beginPath();
+
+    if (!cornerRadius) {
+      // simple rect - don't bother doing all that complicated maths stuff.
+      context.rect(0, 0, width, height);
+    } else {
+      Util.drawRoundedRectPath(context, width, height, cornerRadius);
+    }
+    context.closePath();
+    context.fillStrokeShape(this);
+  }
+
+  cornerRadius: GetSet<number | number[], this>;
+}
+```
+
+헉. 너무 궁금합니다.  
+이런 node들이 어떻게 별다른 문제없이 사용될 수 있을까요?
+
+자! 이제 차근차근 찾아보도록 하겠습니다.
+
+<br />
+
+### 1.1. 힌트 찾기
+
+#### 1.1.1 HostConfig
+
+react-konva 코드를 보기 얼마 전에 React 파이버 아키텍쳐 아티클을 읽었습니다.
+
+해당 아티클에서 Host 라는 단어가 굉장히 많이 등장합니다.
+
+<Image
+  width={240}
+  height={200}
+  style={{ margin: "0 auto" }}
+  src="/images/react-konva/1.png"
+  alt="react konva 파일"
+/>
+
+우연인지 운명인지 react-konva에서도 **HostConfig** 라는 단어를 발견했습니다.
+
+react와 react-konva 그리고 host와 hostConfig.  
+무언가 관계가 있어 보입니다.
+
+ReactKonvaHostConfig 코드를 보면 react-reconciler와의 관계를 찾을 수 있습니다.
+
+와우! 큰 힌트를 얻었습니다.  
+react-reconciler를 살펴보면 실마리를 얻을 수 있을 것 같습니다.
+
+#### 1.1.2 React Reconciler
+
+```tsx
+const Reconciler = require("react-reconciler");
+
+const HostConfig = {
+  // You'll need to implement some methods here.
+  // See below for more information and examples.
+};
+
+const MyRenderer = Reconciler(HostConfig);
+
+const RendererPublicAPI = {
+  render(element, container, callback) {
+    // Call MyRenderer.updateContainer() to schedule changes on the roots.
+    // See ReactDOM, React Native, or React ART for practical examples.
+  },
+};
+
+module.exports = RendererPublicAPI;
+```
+
+README에서 확인할 수 있듯이 HostConfig에는 여러 가지 인터페이스가 있습니다.
+
+- createInstance
+- createTextInstance
+- appendChild
+- removeChild
+- insertBefore
+- commitUpdate
+- …
+
+이렇게 사용자가 정의한 HostConfig로 Custom Renderer를 만들 수 있습니다.
+
+더 궁금하신 분은 아래 글들을 읽어보시길 바랍니다.
+
+- React 파이버 아키텍쳐
+- react-reconciler README
+- custom renderer 시리즈
+
+### 1.2. React Konva Host Config
+
+역시 저희가 추측한 게 맞았습니다.
+
+다시 돌아와서 코드를 살펴봅시다.
+
+#### 1.2.1 createInstance
+
+제일 먼저 등장하는 createInstance를 살펴보도록 하겠습니다.
+
+<CodeFocus>
+
+```tsx {2,15,17}
+export function createInstance(type, props, internalInstanceHandle) {
+  let NodeClass = Konva[type]; // (1)
+  if (!NodeClass) {
+    console.error(
+      `Konva has no node with the type ${type}. Group will be used instead. If you use minimal version of react-konva, just import required nodes into Konva: "import "konva/lib/shapes/${type}"  If you want to render DOM elements as part of canvas tree take a look into this demo: <https://konvajs.github.io/docs/react/DOM_Portal.html`>
+    );
+    NodeClass = Konva.Group;
+  }
+
+  const propsWithoutEvents = {};
+  const propsWithOnlyEvents = {};
+
+  /** 중략 */
+
+  const instance = new NodeClass(propsWithoutEvents); // (2)
+
+  applyNodeProps(instance, propsWithOnlyEvents); // (3)
+
+  return instance;
+}
+```
+
+1. Konva에 해당 type이 존재하는지 확인하고
+2. 해당하는 타입의 <CodeFocusTarget target="NodeClass">Konva</CodeFocusTarget> 인스턴스를 만들고
+3. <CodeFocusTarget target="applyNodeProps">props</CodeFocusTarget>를
+   적용합니다.
+</CodeFocus>
+
+applyNodeProps 함수엔 그리는 로직이 들어있습니다.  
+아래에서 다시 다루도록 하겠습니다.
+
+정리하면 **DOM Renderer**는 `createInstance`에서 `document.createElement`를 호출하고,
+**ReactKonva Renderer**는 `createInstance`에서 Konva 인스턴스를 생성하고 그려줍니다.
+
+#### 1.2.2. appendChild
+
+하나 더 살펴보도록 하겠습니다.
+
+<CodeFocus>
+
+```tsx
+export function appendChild(parentInstance, child) {
+  if (child.parent === parentInstance) {
+    child.moveToTop();
+  } else {
+    parentInstance.add(child);
+  }
+
+  updatePicture(parentInstance);
+}
+```
+
+부모 Konva 인스턴스에 child를 <CodeFocusTarget target="add">add</CodeFocusTarget>하고 <CodeFocusTarget target="updatePicture">그려줍니다</CodeFocusTarget>.
+
+정리하면 DOM Renderer는 element.appendChild를 호출하고,
+ReactKonva Renderer는 부모 Konva konvaInstance.add를 호출합니다.
+
+</CodeFocus>
+
+### 1.3 정리
+
+혹시 눈치채셨나요?
+
+DOM element를 다루는 DOM Renderer와 달리 ReactKonva Renderer는 konva 인스턴스를 다루고 있습니다.
+
+아하! 비밀이 밝혀졌습니다.  
+react-konva의 renderer는 konva instance를 다루는 것이었습니다.
+
+그렇다면 선언적으로 canvas를 다루는 다른 라이브러리리들도 HostConfig를 커스텀하고 있을까요?
+
+[**react-three-fiber**](https://github.com/pmndrs/react-three-fiber)(이하 r3f) 라이브러리를 살펴보면 쉽게 확인할 수 있습니다.  
+r3f도 HostConfig를 커스텀해 [**renderer**](https://github.com/pmndrs/react-three-fiber/blob/191e72b2486e6bd1cf33a2c2999e72b85fe5ea6a/packages/fiber/src/core/renderer.ts#L87)를 만들어 사용합니다.
+
+더 궁금하신 분들은 react-konva, r3f의 renderer 관련 코드를 읽어보시길 추천드립니다.
+
+## 2. Konva Draw 흐름
+
+여기까지 왔다면 앞에서 konva가 어떻게 Shape들을 그리는지 안 볼 수 없는데요,  
+궁금하지 않으신가요? 거절은 거절합니다.
+
+### 2.2. 코드 따라가보기
+
+자! Draw 로직을 찾아 여행을 떠나봅시다.
+
+⚠️ 이 섹션은 흐름을 파악하기 위한 섹션으로, Draw 관련 로직만 확인하고 그 이외의 로직은 생략합니다.
+
+#### 2.2.1. applyNodeProps, updatePicture
+
+- [makeUpdates.ts#L10](https://github.com/konvajs/react-konva/blob/master/src/makeUpdates.ts#L10)
+
+먼저 createInstance 인터페이스에서 확인했던 applyNodeProps 함수를 확인해 보면
+
+<CodeFocus>
+
+```tsx
+export function applyNodeProps(instance, props, oldProps = EMPTY_PROPS) {
+  // ...
+  updatePicture(instance);
+  // ...
+}
+
+export function updatePicture(node) {
+  if (!Konva.autoDrawEnabled) {
+    var drawingNode = node.getLayer() || node.getStage();
+    drawingNode && drawingNode.batchDraw();
+  }
+}
+```
+
+instance에 props를 적용한 이후 <CodeFocusTarget target="updatePicture">updatePicture</CodeFocusTarget>를 호출합니다.  
+그리고 updatePicture는 drawNode의 <CodeFocusTarget target="batchDraw">batchDraw</CodeFocusTarget>를 호출합니다.
+
+</CodeFocus>
+
+#### 2.2.2. Layer.batchDraw
+
+- [Layer.ts#L297](https://github.com/konvajs/konva/blob/a1660e1ccbd18c8b1b7d7303ea25f7a14a2d7858/src/Layer.ts#L297)
+
+<CodeFocus>
+Layer.batchDraw에서 <CodeFocusTarget target="draw">draw</CodeFocusTarget>를 호출합니다.
+
+```tsx
+batchDraw() {
+  if (!this._waitingForDraw) {
+    this._waitingForDraw = true;
+    Util.requestAnimFrame(() => {
+      this.draw();
+      this._waitingForDraw = false;
+    });
+  }
+  return this;
+}
+```
+
+</CodeFocus>
+
+#### 2.2.3. Node.draw
+
+- [Node.ts#L2390](https://github.com/konvajs/konva/blob/a1660e1ccbd18c8b1b7d7303ea25f7a14a2d7858/src/Node.ts#L2390)
+
+<CodeFocus>
+draw에서 <CodeFocusTarget target="drawScene">drawScene</CodeFocusTarget> 함수를 호출합니다.
+
+```tsx
+draw() {
+  this.drawScene();
+  this.drawHit();
+  return this;
+}
+```
+
+</CodeFocus>
+
+#### 2.2.4. Shape.drawScene
+
+- [Shape.ts#L576](https://github.com/konvajs/konva/blob/a1660e1ccbd18c8b1b7d7303ea25f7a14a2d7858/src/Shape.ts#L576)
+
+<CodeFocus>
+Shape에 구현된 drawScene을 확인해 보면 <CodeFocusTarget target="getSceneFunc">getSceneFunc</CodeFocusTarget>를 호출해 drawFunc를 가져와 Shape를 그리고 있습니다.
+
+```tsx
+drawScene(can?: SceneCanvas, top?: Node) {
+  // ...
+  var drawFunc = this.getSceneFunc();
+  // ...
+}
+```
+
+</CodeFocus>
+
+#### 2.2.5. Shape.getSceneFunc
+
+- [Shape.ts#L220](https://github.com/konvajs/konva/blob/a1660e1ccbd18c8b1b7d7303ea25f7a14a2d7858/src/Shape.ts#L220)
+
+<CodeFocus>
+Shape에서 어떤 함수를 drawFunc로 전달하는지 확인해 봤더니 어딘가 익숙한 함수가 보입니다.
+
+```tsx
+getSceneFunc() {
+  return this.attrs.sceneFunc || this["_sceneFunc"];
+}
+```
+
+<CodeFocusTarget target='"_sceneFunc"'>\_scencFunc</CodeFocusTarget> 어딘가 익숙하지
+않나요?
+
+</CodeFocus>
+
+#### 2.2.6 Shape.getSceneFunc
+
+위에서 잠시 등장했던 [Rect 코드](#1-react-konva)에서 **\_scencFunc**를 확인할 수 있습니다.
+
+Rect는 Shape를 상속받아서 rect를 그리는 로직을 \_sceneFunc에 작성합니다.
+
+<CodeFocus>
+
+다른 shape들도 마찬가지로 Shape를 상속받아 <CodeFocusTarget target="_sceneFunc">\_sceneFunc</CodeFocusTarget> 함수 안에 각자 draw 로직을 작성합니다. (`Circle`, `Arc` ..)
+
+```tsx
+export class Circle extends Shape<CircleConfig> {
+  _sceneFunc(context: Context) {
+    context.beginPath();
+    context.arc(0, 0, this.attrs.radius || 0, 0, Math.PI * 2, false);
+    context.closePath();
+    context.fillStrokeShape(this);
+  }
+  // ...
+}
+
+export class Arc extends Shape<ArcConfig> {
+  _sceneFunc(context: Context) {
+    var angle = Konva.getAngle(this.angle()),
+      clockwise = this.clockwise();
+
+    context.beginPath();
+    context.arc(0, 0, this.outerRadius(), 0, angle, clockwise);
+    context.arc(0, 0, this.innerRadius(), angle, 0, !clockwise);
+    context.closePath();
+    context.fillStrokeShape(this);
+  }
+  // ...
+}
+```
+
+</CodeFocus>
+
+그리고 앞에서 확인했던 순서대로 \_scencFunc를 찾아 그림을 그립니다.
+
+## 끝내며
+
+이렇게 react-konva가 어떻게 선언적으로 canvas를 다루는지, Konva가 어떻게 Shape들을 그리는지 차근차근 코드를 따라가면서 확인해 봤습니다.
+
+정말 신기하지 않나요?  
+이렇게 신기하고 재밌는 내용을 공유하고 싶어서 글로 작성해 봤는데 잘 전달됐으면 좋겠습니다.
+
+궁금한 점이나 고칠 내용이 있다면 알려주세요!

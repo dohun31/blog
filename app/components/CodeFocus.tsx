@@ -40,13 +40,13 @@ export function CodeFocus({ children }: { children: ReactNode }) {
 
     const tokens = pre.querySelectorAll("span");
 
-    Array.from(tokens)
-      .filter(
-        (node) => node.childElementCount === 0 && node.textContent === target
-      )
-      .forEach((node) => {
+    Array.from(tokens).forEach((node) => {
+      if (node.textContent === target) {
         node.classList.add("focus-target");
-      });
+      } else {
+        node.classList.remove("focus-target");
+      }
+    });
   }, [target]);
 
   return (
@@ -86,14 +86,13 @@ export function CodeFocusTarget({
 }) {
   const { setHovered, setTarget } = useCodeFocusContext();
 
-  useEffect(() => {
-    setTarget(target);
-  }, [target]);
-
   return (
     <code
       className="code-focus-target"
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => {
+        setHovered(true);
+        setTarget(target);
+      }}
       onMouseLeave={() => setHovered(false)}
       style={{ transition: "opacity 0.2s" }}
     >

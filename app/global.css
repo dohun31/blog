@@ -203,7 +203,8 @@ pre code {
   }
   .token.class,
   .token.class-name,
-  .token.builtin {
+  .token.builtin,
+  .token.function {
     color: rgba(var(--sh-class), var(--code-opacity));
 
     &.focus-target {
@@ -211,8 +212,7 @@ pre code {
     }
   }
   .token.identifier,
-  .token.variable,
-  .token.function {
+  .token.variable {
     color: rgba(var(--sh-identifier), var(--code-opacity));
 
     &.focus-target {
@@ -240,4 +240,9 @@ pre code {
 .code-focus-target {
   background-color: rgb(var(--sh-line-background));
   cursor: help;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.125rem 0.25rem !important;
+  margin-inline: 0.125rem !important;
+  border-radius: 0.25rem !important;
 }
